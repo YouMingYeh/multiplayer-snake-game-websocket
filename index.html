@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        #gameState {
+            display: grid;
+            grid-template-columns: repeat(20, 20px);
+            gap: 1px;
+        }
+        .cell {
+            width: 20px;
+            height: 20px;
+            border: 1px solid #000;  /* add this line */
+        }
+        .cell-empty {
+            background-color: #fff;
+        }
+        .cell-snake {
+            background-color: #0f0;
+        }
+        .cell-food {
+            background-color: #f00;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameState"></div>
+    <script>
+        var socket = new WebSocket("ws://localhost:6789");
+
+        socket.onmessage = function(event) {
+            var data = JSON.parse(event.data);
+            if (data.type === "state") {
+                var gameState = document.getElementById("gameState");
+                gameState.innerHTML = '';
+                for (var i = 0; i < data.map.length; i++) {
+                    for (var j = 0; j < data.map[i].length; j++) {
+                        var cell = document.createElement('div');
+                        cell.classList.add('cell');
+                        if (data.map[j][i] === "") {
+                            cell.classList.add('cell-empty');
+                        } else if (data.map[j][i] === "food") {
+                            cell.classList.add('cell-food');
+                        } else {
+                            cell.classList.add('cell-snake');
+                        }
+                        gameState.appendChild(cell);
+                    }
+                }
+            }
+        };
+
+        socket.onclose = function(event) {
+            console.log("Connection closed: ", event);
+        };
+
+        socket.onerror = function(error) {
+            console.log("WebSocket error: ", error);
+        };
+    </script>
+</body>
+</html>

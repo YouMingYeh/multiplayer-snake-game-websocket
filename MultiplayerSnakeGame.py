@@ -1,0 +1,88 @@
+from typing import List
+from Snake import Snake
+from Food import Food
+
+
+class MultiplayerSnakeGame:
+    def __init__(self):
+        self.width = 20
+        self.height = 20
+        self.snakes: List[Snake] = []
+        self.foods: List[Food] = []
+        self.map = [["" for _ in range(self.width)] for _ in range(self.height)]
+
+    def add_snake(self, snake: Snake):
+        self.snakes.append(snake)
+        for x, y in snake.body:
+            self.map[x][y] = snake.player_id
+
+    def remove_snake(self, player_id: str):
+        self.snakes = [snake for snake in self.snakes if snake.player_id != player_id]
+        for x in range(self.width):
+            for y in range(self.height):
+                if self.map[x][y] == player_id:
+                    self.map[x][y] = ""
+
+    def add_food(self, food: Food):
+        self.foods.append(food)
+        self.map[food.position[0]][food.position[1]] = "food"
+
+    def remove_food(self, position):
+        self.foods = [food for food in self.foods if food.position != position]
+        self.map[position[0]][position[1]] = ""
+
+    def move_snakes(self):
+        for snake in self.snakes:
+            snake.move()
+
+    def change_direction(self, player_id, direction):
+        for snake in self.snakes:
+            if snake.player_id == player_id:
+                snake.direction = direction
+
+    def check_collisions(self):
+        for snake in self.snakes:
+            head = snake.body[0]
+            if (
+                head[0] < 0
+                or head[0] >= self.width
+                or head[1] < 0
+                or head[1] >= self.height
+            ):
+                self.remove_snake(snake.player_id)
+            elif (
+                head
+                in [body for other_snake in self.snakes for body in other_snake.body]
+                and head != snake.body[0]
+            ):
+                self.remove_snake(snake.player_id)
+            elif head in [food.position for food in self.foods]:
+                snake.score += 1
+                snake.food_eaten += 1
+                self.remove_food(head)
+
+    def update_map(self):
+        self.map = [["" for _ in range(self.width)] for _ in range(self.height)]
+        for snake in self.snakes:
+            for x, y in snake.body:
+                self.map[x][y] = snake.player_id
+        for food in self.foods:
+            self.map[food.position[0]][food.position[1]] = "food"
+
+    def spawn_food(self):
+        if len(self.foods) >= 10:
+            return
+        new_food = Food()
+        new_food.spawn()
+        self.add_food(new_food)
+
+    def spawn_snake(self, player_id):
+        new_snake = Snake(player_id)
+        new_snake.spawn()
+        self.add_snake(new_snake)
+
+    def update(self):
+        self.move_snakes()
+        self.check_collisions()
+        self.update_map()
+        self.spawn_food()
