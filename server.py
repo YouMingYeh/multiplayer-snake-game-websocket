@@ -1,7 +1,7 @@
-# server.py
 import asyncio
 import websockets
 import json
+from aiohttp import web
 
 from MultiplayerSnakeGame import MultiplayerSnakeGame
 
@@ -9,7 +9,7 @@ players = {}
 game_active = False
 next_player_id = 0
 socks = set()
-
+FRAME_RATE = 0.5
 
 async def register_player(websocket):
     global next_player_id
@@ -40,7 +40,7 @@ async def game_loop():
                 print(f"Player {players[websocket]} lost")
                 await websocket.close()
 
-        await asyncio.sleep(0.2)
+        await asyncio.sleep(FRAME_RATE)
 
 
 async def broadcast_loop():
@@ -120,13 +120,40 @@ async def handle_connection(websocket, path):
         print(f"Connection closed: {websocket}")
         socks.remove(websocket)
         print(f"Remaining connections: {len(socks)}")
+        
+async def handle(request):
+    with open('./index.html', 'r') as f:
+        return web.Response(text=f.read(), content_type='text/html')
 
 
 game = MultiplayerSnakeGame()
 game_active = True
-start_server = websockets.serve(handle_connection, "localhost", 6789)
 
-asyncio.get_event_loop().create_task(game_loop())
-asyncio.get_event_loop().create_task(broadcast_loop())
-asyncio.get_event_loop().run_until_complete(start_server)
-asyncio.get_event_loop().run_forever()
+async def start_http_server():
+    app = web.Application()
+    app.router.add_get('/', handle)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, 'localhost', 3000)
+    await site.start()
+
+async def start_websocket_server():
+    async with websockets.serve(handle_connection, "localhost", 6789):
+        await asyncio.Future()  # Run forever
+
+
+async def main():
+    # Start the game and broadcast loops as background tasks
+    asyncio.create_task(game_loop())
+    asyncio.create_task(broadcast_loop())
+
+    # Start both servers
+    await asyncio.gather(
+        start_http_server(),
+        start_websocket_server(),
+    )
+
+asyncio.run(main())
+
+
+

@@ -1,62 +1,115 @@
 <!DOCTYPE html>
 <html>
-<head>
+  <head>
     <style>
-        #gameState {
-            display: grid;
-            grid-template-columns: repeat(20, 20px);
-            gap: 1px;
-        }
-        .cell {
-            width: 20px;
-            height: 20px;
-            border: 1px solid #000;  /* add this line */
-        }
-        .cell-empty {
-            background-color: #fff;
-        }
-        .cell-snake {
-            background-color: #0f0;
-        }
-        .cell-food {
-            background-color: #f00;
-        }
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #f0f0f0;
+        flex-direction: row;
+      }
+      #gameState {
+        display: grid;
+        grid-template-columns: repeat(20, 20px);
+        gap: 0px;
+        margin-right: 20px;
+      }
+      .cell {
+        width: 20px;
+        height: 19px;
+        border: 1px solid #000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 12px;
+      }
+      .cell-empty {
+        background-color: #fff;
+      }
+      .cell-snake {
+        background-color: #0f0;
+      }
+      .cell-food {
+        background-color: #f00;
+      }
+      #scores {
+        top: 0;
+        right: 0;
+        background-color: rgba(255, 255, 255, 0.8);
+        padding: 10px;
+        border-radius: 5px;
+        position: relative;
+      }
+      .score {
+        font-size: 20px;
+        font-weight: bold;
+      }
+      
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div id="gameState"></div>
+    <div id="scores"></div>
     <script>
-        var socket = new WebSocket("ws://localhost:6789");
+      var socket = new WebSocket("ws://localhost:6789");
 
-        socket.onmessage = function(event) {
-            var data = JSON.parse(event.data);
-            if (data.type === "state") {
-                var gameState = document.getElementById("gameState");
-                gameState.innerHTML = '';
-                for (var i = 0; i < data.map.length; i++) {
-                    for (var j = 0; j < data.map[i].length; j++) {
-                        var cell = document.createElement('div');
-                        cell.classList.add('cell');
-                        if (data.map[j][i] === "") {
-                            cell.classList.add('cell-empty');
-                        } else if (data.map[j][i] === "food") {
-                            cell.classList.add('cell-food');
-                        } else {
-                            cell.classList.add('cell-snake');
-                        }
-                        gameState.appendChild(cell);
-                    }
+      socket.onmessage = function (event) {
+        var data = JSON.parse(event.data);
+        if (data.type === "state") {
+          var gameState = document.getElementById("gameState");
+          var scoresElement = document.getElementById("scores"); // Get the scores element
+          gameState.innerHTML = "";
+          scoresElement.innerHTML = ""; // Clear the scores element
+
+          // Generate the game state display
+          for (var i = 0; i < data.map.length; i++) {
+            for (var j = 0; j < data.map[i].length; j++) {
+              var cell = document.createElement("div");
+              cell.classList.add("cell");
+              if (data.map[j][i] === "") {
+                cell.classList.add("cell-empty");
+              } else if (data.map[j][i] === "food") {
+                cell.classList.add("cell-food");
+              } else {
+                cell.classList.add("cell-snake");
+                // Check if this cell is the head of a snake
+                for (var player_id in data.snakes_pos) {
+                  if (
+                    data.snakes_pos[player_id].body[0][0] === j &&
+                    data.snakes_pos[player_id].body[0][1] === i
+                  ) {
+                    cell.textContent = player_id; // Set the cell's text content to the player's ID
+                  }
                 }
+              }
+              gameState.appendChild(cell);
             }
-        };
+          }
 
-        socket.onclose = function(event) {
-            console.log("Connection closed: ", event);
-        };
+          // Update the scores based on the body length of the snakes
+          for (var player_id in data.snakes_pos) {
+            var scoreElement = document.createElement("div");
+            scoreElement.classList.add("score");
+            scoreElement.textContent =
+              "Player " +
+              player_id +
+              ": " +
+              data.snakes_pos[player_id].body.length;
+            scoresElement.appendChild(scoreElement);
+          }
+        }
+      };
 
-        socket.onerror = function(error) {
-            console.log("WebSocket error: ", error);
-        };
+      socket.onclose = function (event) {
+        console.log("Connection closed: ", event);
+      };
+
+      socket.onerror = function (error) {
+        console.log("WebSocket error: ", error);
+      };
     </script>
-</body>
+  </body>
 </html>
