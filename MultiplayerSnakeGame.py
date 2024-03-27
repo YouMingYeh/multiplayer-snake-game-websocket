@@ -51,9 +51,7 @@ class MultiplayerSnakeGame:
             ):
                 self.remove_snake(snake.player_id)
             elif (
-                head
-                in [body for other_snake in self.snakes for body in other_snake.body]
-                and head != snake.body[0]
+                self.map[head[0]][head[1]] != "" and self.map[head[0]][head[1]] != "food"
             ):
                 self.remove_snake(snake.player_id)
             elif head in [food.position for food in self.foods]:
