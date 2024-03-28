@@ -53,6 +53,7 @@ class MultiplayerSnakeGame:
             elif (
                 self.map[head[0]][head[1]] != "" and self.map[head[0]][head[1]] != "food"
             ):
+                print("Collision")
                 self.remove_snake(snake.player_id)
             elif head in [food.position for food in self.foods]:
                 snake.score += 1

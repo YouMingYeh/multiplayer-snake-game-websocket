@@ -1,159 +1,87 @@
-import asyncio
-import websockets
-import json
-from aiohttp import web
-
+from flask import Flask, request, send_from_directory
+from flask_socketio import SocketIO, emit, disconnect
 from MultiplayerSnakeGame import MultiplayerSnakeGame
+import json
+import logging
+
+app = Flask(__name__)
+socketio = SocketIO(app, cors_allowed_origins="*")
+game = MultiplayerSnakeGame()
 
 players = {}
-game_active = False
+game_active = True
 next_player_id = 0
-socks = set()
-FRAME_RATE = 0.5
+FRAME_RATE = 0.25
 
-async def register_player(websocket):
-    global next_player_id
-    global players
-    global game
-    player_id = int(next_player_id)
+@app.route('/')
+def index():
+    return send_from_directory('', 'index.html')
+
+def register_player(sid):
+    global next_player_id, game, players
+    player_id = next_player_id
     next_player_id += 1
     game.spawn_snake(player_id)
-    players[websocket] = player_id
+    players[sid] = player_id
     return player_id
 
-
-async def unregister_player(websocket):
-    player_id = players.pop(websocket, None)
+def unregister_player(sid):
+    global players, game
+    player_id = players.pop(sid, None)
     if player_id is not None:
         game.remove_snake(player_id)
 
+@socketio.on('connect')
+def handle_connect():
+    print("New connection:", request.sid)
 
-async def game_loop():
-    global game_active
-    global game
-    print("Game loop started")
+@socketio.on('disconnect')
+def handle_disconnect():
+    print("Connection closed:", request.sid)
+    unregister_player(request.sid)
+
+@socketio.on('register')
+def handle_register():
+    player_id = register_player(request.sid)
+    emit('register', {"type": "register", "player_id": player_id})
+
+@socketio.on('move')
+def handle_move(data):
+    global game, players
+    player_id = players[request.sid]
+    direction = (0, 0)
+    if data["direction"] == "up":
+        direction = (0, -1)
+    elif data["direction"] == "down":
+        direction = (0, 1)
+    elif data["direction"] == "left":
+        direction = (-1, 0)
+    elif data["direction"] == "right":
+        direction = (1, 0)
+    game.change_direction(player_id, direction)
+
+@socketio.on('exit')
+def handle_exit():
+    disconnect(request.sid)
+
+def game_loop():
+    global game_active, game
     while game_active:
+        socketio.sleep(FRAME_RATE)
         game.update()
-        for websocket in players.keys():
-            in_game_player_ids = [snake.player_id for snake in game.snakes]
-            if players[websocket] not in in_game_player_ids:
-                print(f"Player {players[websocket]} lost")
-                await websocket.close()
+        broadcast_game_state()
 
-        await asyncio.sleep(FRAME_RATE)
-
-
-async def broadcast_loop():
-    while True:
-        await broadcast_game_state()
-        await asyncio.sleep(0.1)
-
-
-async def broadcast_game_state():
-    global players
+def broadcast_game_state():
     global game
-    global socks
-
-    snakes_pos = {
-        snake.player_id: {"body": snake.body, "direction": snake.direction}
-        for snake in game.snakes
-    }
+    snakes_pos = {snake.player_id: {"body": snake.body, "direction": snake.direction} for snake in game.snakes}
     foods_pos = [food.position for food in game.foods]
+    state = json.dumps({"type": "state", "map": game.map, "snakes_pos": snakes_pos, "foods_pos": foods_pos})
+    socketio.emit('state', state, broadcast=True)
 
-    state = json.dumps(
-        {
-            "type": "state",
-            "map": game.map,
-            "snakes_pos": snakes_pos,
-            "foods_pos": foods_pos,
-        }
-    )
-    for sock in socks:
-        await sock.send(state)
-
-
-async def handle_message(websocket, message):
-    global players
-    global game
-    data = json.loads(message)
-    player_id = players[websocket]
-    if data["type"] == "move":
-        direction = (0, 0)
-        if data["direction"] == "up":
-            direction = (0, -1)
-        elif data["direction"] == "down":
-            direction = (0, 1)
-        elif data["direction"] == "left":
-            direction = (-1, 0)
-        elif data["direction"] == "right":
-            direction = (1, 0)
-
-        game.change_direction(player_id, direction)
-        return
-    if data["type"] == "exit":
-        await websocket.close()
-        return
-
-
-async def handle_connection(websocket, path):
-    global players
-    global game
-    global sock
-
-    socks.add(websocket)
-    print(f"New connection: {websocket}")
-
-    try:
-        async for message in websocket:
-            data = json.loads(message)
-            if data["type"] == "register":
-                player_id = await register_player(websocket)
-                print(f"New player registered: {player_id}")
-                await websocket.send(
-                    json.dumps({"type": "register", "player_id": player_id})
-                )
-            else:
-                await handle_message(websocket, message)
-
-    finally:
-        await unregister_player(websocket)
-        print(f"Connection closed: {websocket}")
-        socks.remove(websocket)
-        print(f"Remaining connections: {len(socks)}")
-        
-async def handle(request):
-    with open('./index.html', 'r') as f:
-        return web.Response(text=f.read(), content_type='text/html')
-
-
-game = MultiplayerSnakeGame()
-game_active = True
-
-async def start_http_server():
-    app = web.Application()
-    app.router.add_get('/', handle)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, 'localhost', 3000)
-    await site.start()
-
-async def start_websocket_server():
-    async with websockets.serve(handle_connection, "localhost", 6789):
-        await asyncio.Future()  # Run forever
-
-
-async def main():
-    # Start the game and broadcast loops as background tasks
-    asyncio.create_task(game_loop())
-    asyncio.create_task(broadcast_loop())
-
-    # Start both servers
-    await asyncio.gather(
-        start_http_server(),
-        start_websocket_server(),
-    )
-
-asyncio.run(main())
-
-
-
+socketio.start_background_task(target=game_loop)
+gunicorn_error_logger = logging.getLogger('gunicorn.error')
+app.logger.handlers.extend(gunicorn_error_logger.handlers)
+app.logger.setLevel(logging.DEBUG)
+if __name__ == '__main__':
+    
+    socketio.run(app, debug=True, host='localhost', port=3000)

@@ -1,13 +1,18 @@
 import asyncio
-import websockets
-import json
+import socketio
 import random
+import json
+# Create a Socket.IO client
+sio = socketio.AsyncClient()
 
+# Global variables for game state
 map = []
-snakes = {}  # dictionary of snake positions
-foods = []  # list of food positions
+snakes = {}  # Dictionary of snake positions
+foods = []  # List of food positions
+player_id = None  # To be set upon registration
+FRAME_RATE = 0.1  # Time between moves
 
-
+# Function to convert direction array to string
 def direction_to_string(direction):
     if direction == [0, -1]:
         return "up"
@@ -19,17 +24,41 @@ def direction_to_string(direction):
         return "right"
     return None
 
+# Event handler for successful connection
+@sio.event
+async def connect():
+    print("Connected to the server")
+    await sio.emit("register")
 
-FRAME_RATE = 0.1
+# Event handler for disconnection
+@sio.event
+async def disconnect():
+    print("Disconnected from the server")
+
+# Event handler for receiving game state updates
+@sio.event
+async def state(data):
+    global map, snakes, foods
+    data = json.loads(data)
+    map = data["map"]
+    snakes = data["snakes_pos"]
+    foods = data["foods_pos"]
 
 
-async def send_messages(websocket):
+# Event handler for handling registration confirmation
+@sio.event
+async def register(data):
+    global player_id
+    player_id = data["player_id"]
+    print(f"Registered as player {player_id}")
+    # After registration, start sending moves
+    asyncio.create_task(send_moves())
+
+# Coroutine to send move commands based on the game state
+async def send_moves():
+    
     while True:
-        global map
-        global player_id
-        global snakes
-        global foods
-
+        global map, snakes, player_id, foods
         # Find the player's current position
         player_pos = None
         player_direction = None
@@ -42,8 +71,6 @@ async def send_messages(websocket):
             continue
 
         # Determine possible moves
-        print(f"Player position: {player_pos}")
-        print(f"Player direction: {player_direction}")
         directions = []
         if (
             player_pos[0] > 0
@@ -89,54 +116,14 @@ async def send_messages(websocket):
 
         # Choose a random direction from the possible moves
         random_direction = random.choice(directions)
-        print(f"Moving {random_direction}")
         message = {"type": "move", "direction": random_direction}
-        await websocket.send(json.dumps(message))
+        await sio.emit("move", message)
         await asyncio.sleep(FRAME_RATE)  # pause for a second between messages
 
+# Main coroutine to connect to the server
+async def main():
+    await sio.connect('https://ntuim-multiplayer-snake-game-server.azurewebsites.net/')
+    await sio.wait()
 
-async def receive_messages(websocket):
-    async for message in websocket:
-        data = json.loads(message)
-        if data["type"] == "state":
-            global map
-            global snakes
-            global foods
-            map = data["map"]
-            snakes = data["snakes_pos"]
-            foods = data["foods_pos"]
-
-
-player_id = None
-
-
-async def connect():
-    global player_id
-    uri = "ws://localhost:6789"  # replace with your server's URI
-    async with websockets.connect(uri) as websocket:
-        register_message = {"type": "register"}
-        await websocket.send(json.dumps(register_message))
-        # wait for response
-        while True:
-            response = await websocket.recv()
-            data = json.loads(response)
-            if data["type"] == "register":
-                player_id = data["player_id"]
-                print(f"Registered as player {player_id}")
-                break
-
-        send_task = asyncio.create_task(send_messages(websocket))
-        receive_task = asyncio.create_task(receive_messages(websocket))
-
-        # wait for either task to finish
-        done, pending = await asyncio.wait(
-            [send_task, receive_task], return_when=asyncio.FIRST_COMPLETED
-        )
-
-        # if one task finishes, cancel the other
-        for task in pending:
-            task.cancel()
-
-
-# start the connection
-asyncio.get_event_loop().run_until_complete(connect())
+if __name__ == '__main__':
+    asyncio.run(main())
