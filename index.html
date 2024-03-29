@@ -56,8 +56,8 @@
     <div id="scores"></div>
     <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
     <script>
-      // var socket = io("https://ntuim-multiplayer-snake-game-server.azurewebsites.net/");
-      var socket = io("localhost:3000");
+      var socket = io("https://ntuim-multiplayer-snake-game-server.azurewebsites.net/");
+      // var socket = io("localhost:3000");
 
       socket.on("connect", function () {
         console.log("Connected to the server via Socket.IO");
