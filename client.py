@@ -28,7 +28,8 @@ def direction_to_string(direction):
 @sio.event
 async def connect():
     print("Connected to the server")
-    await sio.emit("register")
+    player_id = input("Please enter your player ID: ")
+    await sio.emit("register", {"player_id": player_id})
 
 # Event handler for disconnection
 @sio.event
@@ -43,11 +44,17 @@ async def state(data):
     map = data["map"]
     snakes = data["snakes_pos"]
     foods = data["foods_pos"]
+    # if player_id is not in snakes.keys(), disconnect
+    if player_id is None: return
+    if str(player_id) not in snakes.keys():
+        await sio.emit("exit")
+        await sio.disconnect()
 
 
 # Event handler for handling registration confirmation
 @sio.event
 async def register(data):
+    print("Registered as player", data["player_id"])
     global player_id
     player_id = data["player_id"]
     print(f"Registered as player {player_id}")
@@ -116,13 +123,15 @@ async def send_moves():
 
         # Choose a random direction from the possible moves
         random_direction = random.choice(directions)
+        print(f"Sending move: {random_direction}")
         message = {"type": "move", "direction": random_direction}
         await sio.emit("move", message)
         await asyncio.sleep(FRAME_RATE)  # pause for a second between messages
 
 # Main coroutine to connect to the server
 async def main():
-    await sio.connect('https://ntuim-multiplayer-snake-game-server.azurewebsites.net/')
+    # await sio.connect('https://ntuim-multiplayer-snake-game-server.azurewebsites.net/')
+    await sio.connect('http://localhost:3000')
     await sio.wait()
 
 if __name__ == '__main__':

@@ -11,16 +11,17 @@ game = MultiplayerSnakeGame()
 players = {}
 game_active = True
 next_player_id = 0
-FRAME_RATE = 0.25
+FRAME_RATE = 0.5
 
 @app.route('/')
 def index():
     return send_from_directory('', 'index.html')
 
-def register_player(sid):
-    global next_player_id, game, players
-    player_id = next_player_id
-    next_player_id += 1
+def register_player(sid, player_id):
+    global game, players
+    if player_id in players.values():
+        print(f"Player ID {player_id} is already in use.")
+        return None
     game.spawn_snake(player_id)
     players[sid] = player_id
     return player_id
@@ -41,9 +42,21 @@ def handle_disconnect():
     unregister_player(request.sid)
 
 @socketio.on('register')
-def handle_register():
-    player_id = register_player(request.sid)
-    emit('register', {"type": "register", "player_id": player_id})
+def handle_register(data):
+    print("Registering player:", data["player_id"])
+    player_id = register_player(request.sid, data["player_id"])
+    if player_id is not None:
+        emit('register', {"type": "register", "player_id": player_id})
+    else:
+        emit('register_failed')
+
+@socketio.on('register')
+def handle_register(data):
+    player_id = register_player(request.sid, data["player_id"])
+    if player_id is not None:
+        emit('register', {"type": "register", "player_id": player_id})
+    else:
+        emit('register_failed')
 
 @socketio.on('move')
 def handle_move(data):

@@ -24,7 +24,9 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        font-size: 12px;
+        font-size: 10px;
+        white-space: nowrap;
+        overflow: visible;
       }
       .cell-empty {
         background-color: #fff;
@@ -54,7 +56,8 @@
     <div id="scores"></div>
     <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
     <script>
-      var socket = io("https://ntuim-multiplayer-snake-game-server.azurewebsites.net/");
+      // var socket = io("https://ntuim-multiplayer-snake-game-server.azurewebsites.net/");
+      var socket = io("localhost:3000");
 
       socket.on("connect", function () {
         console.log("Connected to the server via Socket.IO");
@@ -65,8 +68,8 @@
         var gameState = document.getElementById("gameState");
         var scoresElement = document.getElementById("scores"); // Get the scores element
         gameState.innerHTML = "";
-        scoresElement.innerHTML = ""; // Clear the scores element
-
+        scoresElement.innerHTML = "<h1>Scores: </h1>"; // Clear the scores element
+        // scoreElement.classList.add("score");
         // Generate the game state display
         for (var i = 0; i < data.map.length; i++) {
           for (var j = 0; j < data.map[i].length; j++) {

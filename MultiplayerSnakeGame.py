@@ -38,6 +38,13 @@ class MultiplayerSnakeGame:
     def change_direction(self, player_id, direction):
         for snake in self.snakes:
             if snake.player_id == player_id:
+                if (
+                    snake.direction == (1, 0) and direction == (-1, 0)
+                    or snake.direction == (-1, 0) and direction == (1, 0)
+                    or snake.direction == (0, 1) and direction == (0, -1)
+                    or snake.direction == (0, -1) and direction == (0, 1)
+                ):
+                    return
                 snake.direction = direction
 
     def check_collisions(self):
