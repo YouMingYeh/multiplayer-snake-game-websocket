@@ -56,8 +56,22 @@
     <div id="scores"></div>
     <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
     <script>
-      var socket = io("https://ntuim-multiplayer-snake-game-server.azurewebsites.net/");
-      // var socket = io("localhost:3000");
+      var socket = io(
+        "https://ntuim-multiplayer-snake-game-server.azurewebsites.net/"
+      );
+
+      const idToColor = (str) => {
+        let hash = 0;
+        str.split('').forEach(char => {
+          hash = char.charCodeAt(0) + ((hash << 5) - hash)
+        })
+        let colour = '#'
+        for (let i = 0; i < 3; i++) {
+          const value = (hash >> (i * 8)) & 0xff
+          colour += value.toString(16).padStart(2, '0')
+        }
+        return colour
+      }
 
       socket.on("connect", function () {
         console.log("Connected to the server via Socket.IO");
@@ -84,11 +98,21 @@
               cell.classList.add("cell-snake");
               // Check if this cell is the head of a snake
               for (var player_id in data.snakes_pos) {
+                for (var k = 0; k < data.snakes_pos[player_id].body.length; k++) {
+                  if (
+                    data.snakes_pos[player_id].body[k][0] === j &&
+                    data.snakes_pos[player_id].body[k][1] === i
+                  ) {
+                    
+                    cell.style.backgroundColor = idToColor(player_id)
+                  }
+                }
                 if (
                   data.snakes_pos[player_id].body[0][0] === j &&
                   data.snakes_pos[player_id].body[0][1] === i
                 ) {
-                  cell.textContent = player_id; // Set the cell's text content to the player's ID
+                  cell.textContent = player_id;
+                  
                 }
               }
             }
