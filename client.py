@@ -130,7 +130,7 @@ async def send_moves():
 
 # Main coroutine to connect to the server
 async def main():
-    await sio.connect('https://ntuim-multiplayer-snake-game-server.azurewebsites.net/')
+    await sio.connect('http://140.112.106.45:3000/')
     # await sio.connect('http://localhost:3000')
     await sio.wait()
 
