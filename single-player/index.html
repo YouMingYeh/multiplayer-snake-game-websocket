@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #f0f0f0;
+        flex-direction: row;
+      }
+      #gameState {
+        display: grid;
+        grid-template-columns: repeat(20, 20px);
+        gap: 0px;
+        margin-right: 20px;
+      }
+      .cell {
+        width: 20px;
+        height: 19px;
+        border: 1px solid #000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 10px;
+        white-space: nowrap;
+        overflow: visible;
+      }
+      .cell-empty {
+        background-color: #fff;
+      }
+      .cell-snake {
+        background-color: #0f0;
+      }
+      .cell-food {
+        background-color: #f00;
+      }
+      #scores {
+        top: 0;
+        right: 0;
+        background-color: rgba(255, 255, 255, 0.8);
+        padding: 10px;
+        border-radius: 5px;
+        position: relative;
+      }
+      .score {
+        font-size: 20px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="gameState"></div>
+    <div id="scores"></div>
+    <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
+    <script>
+      var socket = io(
+        "http://140.112.106.45:3000/"
+      );
+
+      const idToColor = (str) => {
+        let hash = 0;
+        str.split('').forEach(char => {
+          hash = char.charCodeAt(0) + ((hash << 5) - hash)
+        })
+        let colour = '#'
+        for (let i = 0; i < 3; i++) {
+          const value = (hash >> (i * 8)) & 0xff
+          colour += value.toString(16).padStart(2, '0')
+        }
+        return colour
+      }
+
+      socket.on("connect", function () {
+        console.log("Connected to the server via Socket.IO");
+      });
+
+      socket.on("state", function (data) {
+        data = JSON.parse(data);
+        var gameState = document.getElementById("gameState");
+        var scoresElement = document.getElementById("scores"); // Get the scores element
+        gameState.innerHTML = "";
+        scoresElement.innerHTML = "<h1>Scores: </h1>"; // Clear the scores element
+        // scoreElement.classList.add("score");
+        // Generate the game state display
+        for (var i = 0; i < data.map.length; i++) {
+          for (var j = 0; j < data.map[i].length; j++) {
+            var cell = document.createElement("div");
+            cell.classList.add("cell");
+            cell.id = "cell-" + j + "-" + i;
+            if (data.map[j][i] === "") {
+              cell.classList.add("cell-empty");
+            } else if (data.map[j][i] === "food") {
+              cell.classList.add("cell-food");
+            } else {
+              cell.classList.add("cell-snake");
+              // Check if this cell is the head of a snake
+              for (var player_id in data.snakes_pos) {
+                for (var k = 0; k < data.snakes_pos[player_id].body.length; k++) {
+                  if (
+                    data.snakes_pos[player_id].body[k][0] === j &&
+                    data.snakes_pos[player_id].body[k][1] === i
+                  ) {
+                    
+                    cell.style.backgroundColor = idToColor(player_id)
+                  }
+                }
+                if (
+                  data.snakes_pos[player_id].body[0][0] === j &&
+                  data.snakes_pos[player_id].body[0][1] === i
+                ) {
+                  cell.textContent = player_id;
+                  
+                }
+              }
+            }
+            gameState.appendChild(cell);
+          }
+        }
+
+        // Update the scores based on the body length of the snakes
+        for (var player_id in data.snakes_pos) {
+          var scoreElement = document.createElement("div");
+          scoreElement.classList.add("score");
+          scoreElement.textContent =
+            "Player " +
+            player_id +
+            ": " +
+            data.snakes_pos[player_id].body.length;
+          scoresElement.appendChild(scoreElement);
+        }
+      });
+
+      socket.on("disconnect", function () {
+        console.log("Disconnected from the server.");
+      });
+    </script>
+  </body>
+</html>
