@@ -26,6 +26,7 @@
         align-items: center;
         font-size: 10px;
         white-space: nowrap;
+        text-overflow: clip;
         overflow: visible;
       }
       .cell-empty {
@@ -59,20 +60,22 @@
       // var socket = io(
       //   "http://140.112.106.45:3000/"
       // );
-      var socket = io("https://ntuim-multiplayer-snake-game-server.azurewebsites.net/");
+      var socket = io(
+        "https://ntuim-multiplayer-snake-game-server.azurewebsites.net/"
+      );
 
       const idToColor = (str) => {
         let hash = 0;
-        str.split('').forEach(char => {
-          hash = char.charCodeAt(0) + ((hash << 5) - hash)
-        })
-        let colour = '#'
+        str.split("").forEach((char) => {
+          hash = char.charCodeAt(0) + ((hash << 5) - hash);
+        });
+        let colour = "#";
         for (let i = 0; i < 3; i++) {
-          const value = (hash >> (i * 8)) & 0xff
-          colour += value.toString(16).padStart(2, '0')
+          const value = (hash >> (i * 8)) & 0xff;
+          colour += value.toString(16).padStart(2, "0");
         }
-        return colour
-      }
+        return colour;
+      };
 
       socket.on("connect", function () {
         console.log("Connected to the server via Socket.IO");
@@ -83,13 +86,14 @@
         var gameState = document.getElementById("gameState");
         var scoresElement = document.getElementById("scores"); // Get the scores element
         gameState.innerHTML = "";
-        scoresElement.innerHTML = "<h1>Scores: </h1>"; // Clear the scores element
+        scoresElement.innerHTML = "<h1>分數：</h1>"; // Clear the scores element
         // scoreElement.classList.add("score");
         // Generate the game state display
         for (var i = 0; i < data.map.length; i++) {
           for (var j = 0; j < data.map[i].length; j++) {
             var cell = document.createElement("div");
             cell.classList.add("cell");
+            cell.style.zIndex = 1;
             cell.id = "cell-" + j + "-" + i;
             if (data.map[j][i] === "") {
               cell.classList.add("cell-empty");
@@ -99,13 +103,16 @@
               cell.classList.add("cell-snake");
               // Check if this cell is the head of a snake
               for (var player_id in data.snakes_pos) {
-                for (var k = 0; k < data.snakes_pos[player_id].body.length; k++) {
+                for (
+                  var k = 0;
+                  k < data.snakes_pos[player_id].body.length;
+                  k++
+                ) {
                   if (
                     data.snakes_pos[player_id].body[k][0] === j &&
                     data.snakes_pos[player_id].body[k][1] === i
                   ) {
-                    
-                    cell.style.backgroundColor = idToColor(player_id)
+                    cell.style.backgroundColor = idToColor(player_id);
                   }
                 }
                 if (
@@ -113,7 +120,7 @@
                   data.snakes_pos[player_id].body[0][1] === i
                 ) {
                   cell.textContent = player_id;
-                  
+                  cell.style.zIndex = 10;
                 }
               }
             }
@@ -126,9 +133,8 @@
           var scoreElement = document.createElement("div");
           scoreElement.classList.add("score");
           scoreElement.textContent =
-            "Player " +
             player_id +
-            ": " +
+            "：" +
             data.snakes_pos[player_id].body.length;
           scoresElement.appendChild(scoreElement);
         }
