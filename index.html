@@ -56,9 +56,10 @@
     <div id="scores"></div>
     <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
     <script>
-      var socket = io(
-        "http://140.112.106.45:3000/"
-      );
+      // var socket = io(
+      //   "http://140.112.106.45:3000/"
+      // );
+      var socket = io("https://ntuim-multiplayer-snake-game-server.azurewebsites.net/");
 
       const idToColor = (str) => {
         let hash = 0;
