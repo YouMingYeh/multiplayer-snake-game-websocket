@@ -11,7 +11,7 @@ game = MultiplayerSnakeGame()
 players = {}
 game_active = True
 next_player_id = 0
-FRAME_RATE = 0.5
+FRAME_RATE = 0.3
 
 @app.route('/')
 def index():

@@ -76,11 +76,12 @@ class MultiplayerSnakeGame:
             self.map[food.position[0]][food.position[1]] = "food"
 
     def spawn_food(self):
-        if len(self.foods) >= 10:
-            return
-        new_food = Food()
-        new_food.spawn()
-        self.add_food(new_food)
+        while len(self.foods) < 20:
+            new_food = Food()
+            new_food.spawn()
+            while self.map[new_food.position[0]][new_food.position[1]] != "":
+                new_food.spawn()
+            self.add_food(new_food)
 
     def spawn_snake(self, player_id):
         new_snake = Snake(player_id)
