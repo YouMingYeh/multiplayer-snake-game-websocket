@@ -39,15 +39,20 @@ class MultiplayerSnakeGame:
         for snake in self.snakes:
             if snake.player_id == player_id:
                 if (
-                    snake.direction == (1, 0) and direction == (-1, 0)
-                    or snake.direction == (-1, 0) and direction == (1, 0)
-                    or snake.direction == (0, 1) and direction == (0, -1)
-                    or snake.direction == (0, -1) and direction == (0, 1)
+                    snake.direction == (1, 0)
+                    and direction == (-1, 0)
+                    or snake.direction == (-1, 0)
+                    and direction == (1, 0)
+                    or snake.direction == (0, 1)
+                    and direction == (0, -1)
+                    or snake.direction == (0, -1)
+                    and direction == (0, 1)
                 ):
                     return
                 snake.direction = direction
 
     def check_collisions(self):
+        snake_ids_to_remove = set()
         for snake in self.snakes:
             head = snake.body[0]
             if (
@@ -56,16 +61,29 @@ class MultiplayerSnakeGame:
                 or head[1] < 0
                 or head[1] >= self.height
             ):
-                self.remove_snake(snake.player_id)
+                snake_ids_to_remove.add(snake.player_id)
             elif (
-                self.map[head[0]][head[1]] != "" and self.map[head[0]][head[1]] != "food"
+                self.map[head[0]][head[1]] != ""
+                and self.map[head[0]][head[1]] != "food"
             ):
                 print("Collision")
-                self.remove_snake(snake.player_id)
+                snake_ids_to_remove.add(snake.player_id)
             elif head in [food.position for food in self.foods]:
                 snake.score += 1
                 snake.food_eaten += 1
                 self.remove_food(head)
+
+        heads = [snake.body[0] for snake in self.snakes]
+        for i in range(len(heads)):
+            for j in range(i + 1, len(heads)):
+                if heads[i] == heads[j]:
+                    snake_ids_to_remove.add(self.snakes[i].player_id)
+                    snake_ids_to_remove.add(self.snakes[j].player_id)
+                    
+
+        for player_id in snake_ids_to_remove:
+            self.remove_snake(player_id)
+                    
 
     def update_map(self):
         self.map = [["" for _ in range(self.width)] for _ in range(self.height)]
@@ -74,6 +92,7 @@ class MultiplayerSnakeGame:
                 self.map[x][y] = snake.player_id
         for food in self.foods:
             self.map[food.position[0]][food.position[1]] = "food"
+
 
     def spawn_food(self):
         while len(self.foods) < 20:
